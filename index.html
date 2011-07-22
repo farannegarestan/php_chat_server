@@ -1,0 +1,198 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Chat Test</title>
+<style type="text/css">
+div.pane {
+	display : none;
+}
+</style>
+<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+<script type="text/javascript">
+	user_id = 0 ;
+	room_id = 0 ;
+	last_update = 0;
+	users = new Array();
+	
+	$(document).ready(function(){
+		
+	})
+	
+	function loginUser() {
+		var data = new Object() ;
+		data.username = $("#login_username").val();
+		$.ajax({
+			url : "server/login.php", 
+			data : data ,
+			dataType : 'json' ,
+			success :function(out) {
+				user_id = out.user_id;
+				console.log("successfully logged in with user_id "+user_id);
+				showJoin();
+			} ,
+			error : function(e) {
+				debugger ;
+				console.log("error joining "+e);
+			}
+		});
+	}
+	
+	function join() {
+		var data = new Object() ;
+		data.user_id = user_id
+		data.room_url = $("#url").val();
+		$.ajax({
+			url : "server/join.php", 
+			data : data ,
+			dataType : 'json' ,
+			success :function(out) {
+				last_update = out.last_update ;
+				room_id = out.room_id ;
+				console.log("successfully joined room_id "+room_id );
+				console.log("last update is "+last_update );
+				showChat();
+				update();
+			} ,
+			error : function(e) {
+				debugger ;
+				console.log("error joining "+e);
+			}
+		});
+	}
+	
+	function update() {
+		var data = new Object() ;
+		data.user_id = user_id ;
+		data.last_update = last_update ;
+		data.room_id = room_id ;
+		$.ajax({
+			url : "server/update_chat.php", 
+			data : data ,
+			dataType : 'json' ,
+			success :function(out) {
+				var messages = out.messages ;
+				last_update = out.last_update
+				users = out.users ;
+				for(var index in messages) {
+					var message = messages[index];
+					$("#chatBox").append("<option>"+findUserName(message.user_id)+" : "+message.message_text+"</option>");
+				}
+				console.log("chat update successful");
+			}, 
+		   error : function(e) {
+			   debugger;
+			console.log("error");
+		   } ,
+		   complete: function() {
+			   setTimeout(function() {
+					update();
+				} , 2000);
+		   }
+		});
+	}
+	
+	function findUserName(userId) {
+		for(index in users) {
+			var user = users[index];
+			if (user.user_id == userId)
+				return user.user_name ;
+		}
+		return "Anonymous" ;
+	}
+	
+	function post() {
+		var data = new Object() ;
+		data.message = $("#text").val();
+		data.user_id = user_id ;
+		data.room_id = room_id
+		$.ajax({
+			url : "server/post.php", 
+			data : data ,
+			success :function(out) {
+				console.log("chat text posted successfully!");
+			}
+		});
+		
+	}
+	
+	function NewUser() {
+		hideAll();
+		$("#new").show();
+	}
+	
+	function ExUser() {
+		hideAll();
+		$("#existing").show();
+	}
+	
+	function hideAll() {
+		$("div.pane").each(function(){
+			$(this).hide();
+		});
+	}
+	
+	function createUser() {
+		var data = new Object() ;
+		data.username= $("#username").val();
+		data.email = $("#email").val(); ;
+		$.ajax({
+			url : "server/new_user.php", 
+			data : data ,
+			dataType : 'json' ,
+			success :function(out) {
+				user_id = out.user_id ;
+				console.log("user successfully created with user_id "+user_id);
+				showJoin();
+			}
+		});
+	}
+	
+	function showJoin() {
+		hideAll();
+		$("#join").show();
+	}
+	
+	function showChat() {
+		hideAll();
+		$("#chat").show();
+	}
+</script>
+
+</head>
+<body>
+	<button onclick="NewUser()">New User</button>
+	<button onclick="ExUser()">Existing User</button><br/>
+	<div id="new" class="pane">
+		<label>Username : 
+			<input name="username" id="username" />
+		</label><br/>
+		<label>Email : 
+			<input name="email" id="email" />
+		</label><br/>
+		<input type="button" value="Create User" onclick="createUser()" /><br/>
+	</div>
+	<div id="existing" class="pane">
+		<div id="login">
+			<label>Username : 
+				<input name="login_username" id="login_username" />
+			</label><br/>
+			<input type="button" value="Login" onclick="loginUser()" /><br/>
+		</div>
+	</div>
+	<div id="join" class="pane">
+		<label>Room : 
+			<input name="url" id="url" />
+		</label><br/>
+		<button onclick="join()">Join</button><br/><br/>
+	</div>
+	<div id="chat" class="pane">
+		<span id="message"></span><br/>
+		<select size="15" style="width:300px;" id="chatBox" ></select><br/>
+		
+		<input name="text" id="text"/>
+		<button onclick="post();$('#text').val('');">Post</button>
+	</div>
+	
+</body>
+</html>
